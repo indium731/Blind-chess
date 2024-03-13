@@ -3,7 +3,15 @@
 [sub_resource type="GDScript" id=1]
 script/source = "extends Node
 
-var BoardPosition = []
+
+
+var BoardPosition = '0000000000000000000000000000000000000000000000000000000000000000'
+
+var move = ''
+
+#Fen string for starting position
+var fen = 'RNBQKBNRPPPPPPPP8888pppppppprnbqkbnr'
+var turn_step = 0
 
 # Black pieces
 var e = 'e'
@@ -44,8 +52,24 @@ var castlingrights = '0000'
 #1 if piece hasnt moved 0 if it has. order is (L,R = left,right r,k = rook,king wb = white or black) Lwr Lbr wk bk Rwr Rbr 
 var kingandrookmove = '111111'
 var castlingmove = []
+var fiftymoverule = 0
+var threefoldrepition = []
+var standinboardposition = ''
+var standinmove = []
+var standinallmovelist = []
+var standinturnstep = 0
+var fakechessboards = []
+var fakechessmoves = []
+var kinglocation = ''
+var targetlocation = []
+var castlingtargets = '1111'
 
-func locations(BoardPosition):
+func locations(BoardPosition, turn_step):
+	
+	if turn_step%2 == 0:
+		color = 'Black'
+	else:
+		color = 'White'
 	
 	blacklocations = []
 	whitelocations = []
@@ -53,7 +77,6 @@ func locations(BoardPosition):
 	
 	
 	for i in 64:
-		
 		position[0] = 1+(i)%8
 		position[1] = 1+i/8
 		
@@ -66,7 +89,7 @@ func locations(BoardPosition):
 				
 	
 
-func checkBoardPosition(BoardPosition):
+func checkBoardPosition(BoardPosition, turn_step):
 	
 	if turn_step%2 == 0:
 		color = 'Black'
@@ -78,47 +101,49 @@ func checkBoardPosition(BoardPosition):
 		position[0] = 1+(i)%8
 		position[1] = 1+i/8
 		
+		
+		
 		if color == 'White':
 			match(BoardPosition[i]):
 				R:
 					checkrook(position,color)
-					allmovelist.append(movelist)
+					allmovelist.append_array(movelist)
 					
 				B:
 					checkbishop(position,color)
-					allmovelist.append(movelist)
+					allmovelist.append_array(movelist)
 				N:
 					checkknight(position,color)
-					allmovelist.append(movelist)
+					allmovelist.append_array(movelist)
 				K:
 					checkking(position,color)
-					allmovelist.append(movelist)
+					allmovelist.append_array(movelist)
 				P:
 					checkpawn(position,color, passantsquare)
-					allmovelist.append(movelist)
+					allmovelist.append_array(movelist)
 				Q:
 					checkqueen(position,color)
-					allmovelist.append(movelist)
+					allmovelist.append_array(movelist)
 		else:
 			match(BoardPosition[i]):
 				r:
 					checkrook(position,color)
-					allmovelist.append(movelist)
+					allmovelist.append_array(movelist)
 				b:
 					checkbishop(position,color)
-					allmovelist.append(movelist)
+					allmovelist.append_array(movelist)
 				n:
 					checkknight(position,color)
-					allmovelist.append(movelist)
+					allmovelist.append_array(movelist)
 				k:
 					checkking(position,color)
-					allmovelist.append(movelist)
+					allmovelist.append_array(movelist)
 				p:
 					checkpawn(position,color, passantsquare)
-					allmovelist.append(movelist)
+					allmovelist.append_array(movelist)
 				q:
 					checkqueen(position,color)
-					allmovelist.append(movelist)
+					allmovelist.append_array(movelist)
 
 		
 		
@@ -129,7 +154,6 @@ func checkBoardPosition(BoardPosition):
 
 func checkking(position, color):
 	movelist = []
-	
 	
 	if color == 'White':
 		enemielist = blacklocations
@@ -269,11 +293,10 @@ func checkqueen(position, color):
 	 
 	movelist = []
 	
-	movelist = checkbishop(position, color)
-	var secondmovelist = checkrook(position, color)
-
-	movelist.append_array(secondmovelist)
+	var secondmovelist = checkbishop(position, color)
+	movelist = checkrook(position,color)
 	
+	movelist.append_array(secondmovelist)
 	
 	return movelist
 
@@ -281,7 +304,18 @@ func checkpawn(position, color, passantsquare):
 	movelist = []
 	
 	if color == 'White':
-		if not ([position[0], position[1]+1]) in whitelocations and (not ([position[0], position[1]+1]) in blacklocations) and position[1] < 8:
+		if not ([position[0], position[1]+1]) in whitelocations and (not ([position[0], position[1]+1]) in blacklocations) and position[1] == 7:
+			movestring = str(position[0],position[1],position[0],position[1]+1,'R')
+			movelist.append(movestring)
+			movestring = str(position[0],position[1],position[0],position[1]+1,'N')
+			movelist.append(movestring)
+			movestring = str(position[0],position[1],position[0],position[1]+1,'B')
+			movelist.append(movestring)
+			movestring = str(position[0],position[1],position[0],position[1]+1,'K')
+			movelist.append(movestring)
+			movestring = str(position[0],position[1],position[0],position[1]+1,'Q')
+			movelist.append(movestring)
+		if not ([position[0], position[1]+1]) in whitelocations and (not ([position[0], position[1]+1]) in blacklocations) and position[1] < 7:
 			movestring = str(position[0],position[1],position[0],position[1]+1)
 			movelist.append(movestring)
 			if not ([position[0], position[1]+2]) in whitelocations and (not ([position[0], position[1]+2]) in blacklocations) and position[1] == 2:
@@ -295,7 +329,18 @@ func checkpawn(position, color, passantsquare):
 			movelist.append(movestring)
 
 	else:
-		if not ([position[0], position[1]-1]) in whitelocations and (not ([position[0], position[1]-1]) in blacklocations) and position[1] < 8:
+		if (not[position[0], position[1]-1]) in whitelocations and (not ([position[0], position[1]-1]) in blacklocations) and position[1] == 2:
+			movestring = str(position[0],position[1],position[0],position[1]-1,'R')
+			movelist.append(movestring)
+			movestring = str(position[0],position[1],position[0],position[1]-1,'N')
+			movelist.append(movestring)
+			movestring = str(position[0],position[1],position[0],position[1]-1,'B')
+			movelist.append(movestring)
+			movestring = str(position[0],position[1],position[0],position[1]-1,'K')
+			movelist.append(movestring)
+			movestring = str(position[0],position[1],position[0],position[1]-1,'Q')
+			movelist.append(movestring)
+		if not ([position[0], position[1]-1]) in whitelocations and (not ([position[0], position[1]-1]) in blacklocations) and position[1] > 2:
 			movestring = str(position[0],position[1],position[0],position[1]-1)
 			movelist.append(movestring)
 			if not ([position[0], position[1]-2]) in whitelocations and (not ([position[0], position[1]-2]) in blacklocations) and position[1] == 7:
@@ -311,11 +356,7 @@ func checkpawn(position, color, passantsquare):
 
 
 
-var move = ''
 
-#Fen string for starting position
-var fen = 'RNBQKBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbqkbnr'
-var turn_step = 0
 
 #turns fenstring into a string able to be put into action
 func TranslateFen():
@@ -329,7 +370,6 @@ func TranslateFen():
 	fen = fen.replace('6', 'eeeeee')
 	fen = fen.replace('7', 'eeeeeee')
 	fen = fen.replace('8', 'eeeeeeee')
-	
 
 func TranslateMove():
 	move = move.replace('a','1')
@@ -340,44 +380,33 @@ func TranslateMove():
 	move = move.replace('f','6')
 	move = move.replace('g','7')
 	move = move.replace('h','8')
+	
+	
 	return move
 
 
 
-func startmoveid():
-	startmoverank = int(move[1])
-	startmovefile = int(move[0])
-	endmoverank = int(move[3])
-	endmovefile = int(move[2])
-	startmoveid = startmovefile
+func startmoveid(startmoverank,startmovefile):
+	startmoveid = int(startmovefile)
+	
+	startmoveid = int(startmoveid)
+	
 	while startmoveid < 64:
 		
 		
 		
-		if startmoveid < startmoverank*8 and startmoveid >= (startmoverank-1)*8:
+		if startmoveid <= int(startmoverank)*8 and startmoveid > ((int(startmoverank)-1)*8):
+			
 			startmoveid-=1
 			
 			return int(startmoveid)
 		startmoveid += 8
 
-func endmoveid():
-	startmoverank = int(move[1])
-	startmovefile = int(move[0])
-	endmoverank = int(move[3])
-	endmovefile = int(move[2])
-	endmoveid = endmovefile
-	while endmoveid < 64:
-		
-		
-		
-		if endmoveid < endmoverank*8 and endmoveid >= (endmoverank-1)*8:
-			endmoveid-=1
-			return int(endmoveid)
-		endmoveid += 8
+
 
 func checkep():
 	
-	if BoardPosition[endmoveid] != p and BoardPosition[endmoveid] != P:
+	if BoardPosition[startmoveid(move[3],move[2])] != p and BoardPosition[startmoveid(move[3],move[2])] != P:
 		passantsquare = []
 		return passantsquare
 		
@@ -395,10 +424,17 @@ func checkep():
 			passantsquare = []
 			return passantsquare
 
-func MakeMove(BoardPosition):
-	if move[3] != null:
-		
+func MakeMove():
+	
+	if len(move) == 4:
 		if move in castlingmove:
+			
+			if turn_step%2 == 0:
+				color = 'Black'
+			else:
+				color = 'White'
+		
+			
 			if move == '5171' and color == 'White':
 				BoardPosition[6] = 'K'
 				BoardPosition[5] = 'R'
@@ -414,86 +450,84 @@ func MakeMove(BoardPosition):
 				while '5131' in castlingmove:
 					castlingmove.erase('5131')
 			elif move == '5878' and color == 'Black':
-				BoardPosition[62] = 'K'
-				BoardPosition[61] = 'R'
+				BoardPosition[62] = 'k'
+				BoardPosition[61] = 'r'
 				BoardPosition[63] = 'e'
 				BoardPosition[60] = 'e'
 				while '5878' in castlingmove:
 					castlingmove.erase('5878')
 			elif move == '5838' and color == 'Black':
-				BoardPosition[58] = 'K'
-				BoardPosition[59] = 'R'
+				BoardPosition[58] = 'k'
+				BoardPosition[59] = 'r'
 				BoardPosition[56] = 'e'
 				BoardPosition[60] = 'e'
 				while '5838' in castlingmove:
 					castlingmove.erase('5838')
 		else:
-			allmovelist = str(allmovelist)
-			if TranslateMove() in allmovelist:
+			
+			if TranslateMove() in str(allmovelist):
 				
 				
 				
-				endmoveid()
-				startmoveid()
-				BoardPosition[endmoveid()] = BoardPosition[startmoveid()]
-				BoardPosition[startmoveid()] = 'e'
+				startmoveid(move[3],move[2])
+				startmoveid(move[1],move[0])
+				BoardPosition[startmoveid(move[3],move[2])] = BoardPosition[startmoveid(move[1],move[0])]
+				BoardPosition[startmoveid(move[1],move[0])] = 'e'
 				
 			
 			
 			else:
-				print('you done messed up aaron')
-	
+				$Errorpanel.add_text('incorrect move please. enter another move in the smaller window.')
+				
+				
+	elif len(move) == 5:
+		
+		if move in str(allmovelist):
+			startmoveid(move[3],move[2])
+			startmoveid(move[1],move[0])
+			if turn_step%2 == 1:
+				BoardPosition[startmoveid(move[3],move[2])] = str(TranslateMove()[4])
+			else:
+				BoardPosition[startmoveid(move[3],move[2])] = (TranslateMove()[4]).to_lower()
+			BoardPosition[startmoveid(move[1],move[0])] = 'e'
+	else:
+		$Errorpanel.add_text('incorrect move. please enter another move in the smaller window.yabadabado')
+		
+		
 
 func castling():
 	
 	
-	print(startmoveid())
-	print(endmoveid())
-	print(move)
 	
-	if startmoveid() == 0:
+	if startmoveid(move[1],move[0]) == 0:
 		kingandrookmove[0] = '0'
-	elif startmoveid() == 4:
+	elif startmoveid(move[1],move[0]) == 4:
 		kingandrookmove[2] = '0'
-	elif startmoveid() == 7:
+	elif startmoveid(move[1],move[0]) == 7:
 		kingandrookmove[4] = '0'
-	elif startmoveid() == 56:
+	elif startmoveid(move[1],move[0]) == 56:
 		kingandrookmove[1] = '0'
-	elif startmoveid() == 60:
+	elif startmoveid(move[1],move[0]) == 60:
 		kingandrookmove[3] = '0'
-	elif startmoveid() == 63:
+	elif startmoveid(move[1],move[0]) == 63:
 		kingandrookmove[5] = '0'
 	
 
-	if BoardPosition[1] == 'e' and BoardPosition[2] == 'e' and BoardPosition[3] == 'e' and int(kingandrookmove[0]) == 1 and int(kingandrookmove[2]) == 1:
+	if BoardPosition[1] == 'e' and BoardPosition[2] == 'e' and BoardPosition[3] == 'e' and kingandrookmove[0] == '1' and kingandrookmove[2] == '1':
 		castlingrights[0] = '1'
 	if BoardPosition[5] == 'e' and BoardPosition[6] == 'e' and int(kingandrookmove[4]) == 1 and int(kingandrookmove[2]) == 1:
 		castlingrights[1] = '1'
-	if BoardPosition[57] == 'e' and BoardPosition[58] == 'e' and BoardPosition[59] == 'e' and int(kingandrookmove[1]) == 1 and int(kingandrookmove[3]) == 1:
+	if BoardPosition[57] == 'e' and BoardPosition[58] == 'e' and BoardPosition[59] == 'e' and kingandrookmove[1] == '1' and kingandrookmove[3] == '1':
 		castlingrights[2] = '1'
-	if BoardPosition[61] == 'e' and BoardPosition[62] == 'e' and int(kingandrookmove[5]) == 1 and int(kingandrookmove[3]) == 1:
+	if BoardPosition[61] == 'e' and BoardPosition[62] == 'e' and kingandrookmove[5] == '1' and kingandrookmove[3] == '1':
 		castlingrights[3] = '1'
-
-func performcastling():
+	
 	
 	for i in 4:
 		
 		
-		if int(castlingrights[i]) == 0:
-			match i:
-				0:
-					while '5131' in castlingmove:
-						castlingmove.erase('5131')
-				1:
-					while '5171' in castlingmove:
-						castlingmove.erase('5171')
-				2:
-					while '5838' in castlingmove:
-						castlingmove.erase('5838')
-				3:
-					while '5878' in castlingmove:
-						castlingmove.erase('5878')
-		else:
+		if castlingrights[i] == '1':
+		
 			match i:
 				0:
 					castlingmove.append('5131')
@@ -503,17 +537,13 @@ func performcastling():
 					castlingmove.append('5838')
 				3:
 					castlingmove.append('5878')
-		
-		
-		
+
+
 
 #ready function
 func _ready():
 	
 	
-	for i in range(64):
-		BoardPosition.append(0)
-		
 	TranslateFen()
 	
 	for i in range(64):
@@ -521,42 +551,254 @@ func _ready():
 	
 	print(BoardPosition)
 
+func fiftymovefunc():
+	if BoardPosition[startmoveid(move[3],move[2])] != 'e':
+		fiftymoverule = 0
+	if BoardPosition[startmoveid(move[1],move[0])] == 'p' or BoardPosition[startmoveid(move[1],move[0])] == 'P':
+		fiftymoverule = 0
+	
+	if fiftymoverule == 100:
+		gameover('draw')
+
+func selfmate():
+	standinboardposition = BoardPosition
+	standinmove = move
+	standinallmovelist = allmovelist
+	standinturnstep = turn_step
+	fakechessmoves = []
+	fakechessboards = []
+	
+	for i in allmovelist.size():
+		
+		BoardPosition = standinboardposition
+		
+		
+		
+		move = str(allmovelist[i])
+		
+		if len(move) == 6:
+			move.erase(0,1)
+			move.erase(5,1)
+		
+		if len(move) == 6:
+			move.left(move.length() - 1)
+		
+		if str(move) == '[]':
+			continue
+		
+		
+		MakeMove()
+		
+		
+		fakechessboards.append(str(BoardPosition))
+		fakechessmoves.append(str(allmovelist[i]))
+		
+	
+	
+	for i in fakechessboards.size():
+		
+		turn_step = standinturnstep
+		turn_step += 1
+		
+		locations(str(fakechessboards[i]), turn_step)
+		checkBoardPosition(fakechessboards[i], turn_step)
+		
+		
+		
+		
+		
+		
+		for u in allmovelist.size():
+			
+			
+			if color == 'White':
+				
+				kinglocation = BoardPosition.find('k')
+			else:
+				
+				kinglocation = BoardPosition.find('K')
+			
+			targetlocation = startmoveid(str(allmovelist[u])[3],str(allmovelist[u])[2])
+			
+			if castlingrights[0] == '1' and '5131' in standinallmovelist:
+				if BoardPosition[1] in targetlocation and BoardPosition[2] in targetlocation and BoardPosition[3] in targetlocation:
+					fakechessmoves.remove('5131')
+					
+			if castlingrights[1] == '1' and '5171' in standinallmovelist:
+				if BoardPosition[5] in targetlocation and BoardPosition[6] in targetlocation:
+					fakechessmoves.remove('5171')
+					
+			if castlingrights[2] == '1' and '5838' in standinallmovelist:
+				if BoardPosition[57] in targetlocation and BoardPosition[58] in targetlocation and BoardPosition[59] in targetlocation:
+					fakechessmoves.remove('5838')
+					
+			if castlingrights[3] == '1' and '5878' in standinallmovelist:
+				if BoardPosition[61] in targetlocation and BoardPosition[62] in targetlocation:
+					fakechessmoves.remove('5878')
+			
+			if int(targetlocation) == int(kinglocation):
+				fakechessmoves.remove(fakechessmoves[i])
+				
+	
+	turn_step = standinturnstep
+	BoardPosition = standinboardposition
+	move = str(standinmove)
+	allmovelist = standinallmovelist
+	return fakechessmoves
+
+func checkmate():
+	
+	standinboardposition = BoardPosition
+	standinmove = move
+	standinallmovelist = allmovelist
+	standinturnstep = turn_step
+	fakechessmoves = []
+	fakechessboards = []
+	var removelist = []
+	
+	turn_step = standinturnstep
+	turn_step += 1
+	
+	locations(str(BoardPosition), turn_step)
+	checkBoardPosition(BoardPosition, turn_step)
+	
+	for i in allmovelist.size():
+		
+		BoardPosition = standinboardposition
+		
+		
+		
+		move = str(allmovelist[i])
+		
+		if len(move) == 6:
+			move.erase(0,1)
+			move.erase(5,1)
+		
+		if len(move) == 6:
+			move.left(move.length() - 1)
+		
+		if str(move) == '[]':
+			continue
+		
+		
+		MakeMove()
+		
+		
+		fakechessboards.append(str(BoardPosition))
+		fakechessmoves.append(str(allmovelist[i]))
+		
+	
+	turn_step += 1
+	for i in fakechessboards.size():
+		
+		
+		
+		locations(str(fakechessboards[i]), turn_step)
+		checkBoardPosition(fakechessboards[i], turn_step)
+		
+		if color == 'White':
+			
+			kinglocation = fakechessboards[i].find('k')
+		else:
+			
+			kinglocation = fakechessboards[i].find('K')
+		
+		for u in allmovelist.size():
+			
+			
+			
+			
+			targetlocation = startmoveid(str(allmovelist[u])[3],str(allmovelist[u])[2])
+			
+			
+			if int(targetlocation) == int(kinglocation):
+				
+				removelist.append(fakechessmoves[i]) 
+	
+	turn_step = standinturnstep
+	BoardPosition = standinboardposition
+	move = str(standinmove)
+	allmovelist = standinallmovelist
+	
+	for i in removelist.size():
+		fakechessmoves.erase(removelist[i])
+	
+	if fakechessmoves.empty():
+		gameover(color)
+	
+	
 
 func _on_LineEdit_text_entered(new_text):
 	
-	move = new_text
+	move = str(new_text)
 	turn_step += 1
+	fiftymoverule += 1
 	
-	locations(BoardPosition)
-	checkBoardPosition(BoardPosition)
+	
+	$LastMove.clear()
+	locations(BoardPosition, turn_step)
+	checkBoardPosition(BoardPosition, turn_step)
 	TranslateMove()
+	fiftymovefunc()
 	castling()
-	performcastling()
 	allmovelist.append(castlingmove)
-	print(castlingmove,castlingrights)
-	MakeMove(BoardPosition)
+	allmovelist = selfmate()
+	MakeMove()
 	passantsquare = checkep()
 	print(BoardPosition)
+	$LastMove.add_text(new_text)
+	threefoldrepition.append(BoardPosition)
+	if threefoldrepition.count(BoardPosition) == 3:
+		gameover('draw')
+	
+	if '5131' in castlingmove:
+		castlingmove.erase('5131')
+	
+	if '5171' in castlingmove:
+		castlingmove.erase('5171')
+	
+	if '5838' in castlingmove:
+		castlingmove.erase('5838')
+	
+	if '5878' in castlingmove:
+		castlingmove.erase('5878')
 	
 	
-	for i in 4:
-		
-		
-		if int(castlingrights[i]) == 0:
-			match i:
-				0:
-					while '5131' in castlingmove:
-						castlingmove.erase('5131')
-				1:
-					while '5171' in castlingmove:
-						castlingmove.erase('5171')
-				2: 
-					while '5838' in castlingmove:
-						castlingmove.erase('5838')
-				3:
-					while '5878' in castlingmove:
-						castlingmove.erase('5878')
+	checkmate()
 
+
+
+func gameover(victor):
+	
+	if victor == 'draw':
+		$Label.set_text(\"it's a draw\")
+	else:
+		
+		$Label.set_text(victor + ' won')
+		
+	$Button.set_text('Press here to restart')
+	$Button.disabled = false
+	$Button.visible = true
+
+
+
+
+
+func _on_Newmove_text_entered(new_text):
+	move = str(new_text)
+	MakeMove()
+	passantsquare = checkep()
+	print(BoardPosition)
+	$LastMove.clear()
+	$Errorpanel.clear()
+	$LastMove.add_text(new_text)
+	threefoldrepition.append(BoardPosition)
+	if threefoldrepition.count(BoardPosition) == 3:
+		gameover('draw')
+
+
+func _on_Button_pressed():
+	get_tree().reload_current_scene()
 "
 
 [node name="ChessBoard" type="Node"]
@@ -573,4 +815,55 @@ margin_right = -0.432068
 margin_bottom = -0.200012
 clear_button_enabled = true
 
+[node name="LastMove" type="RichTextLabel" parent="."]
+anchor_left = 0.066
+anchor_top = 0.515
+anchor_right = 0.329
+anchor_bottom = 0.59
+margin_left = 0.416
+margin_top = -3.05176e-05
+margin_right = 0.103973
+margin_bottom = -3.05176e-05
+
+[node name="Errorpanel" type="RichTextLabel" parent="."]
+anchor_left = 0.661
+anchor_top = 0.402
+anchor_right = 0.846
+anchor_bottom = 0.5
+margin_left = 0.135986
+margin_top = -0.200012
+margin_right = -0.304016
+margin_bottom = -9.0
+
+[node name="Newmove" type="LineEdit" parent="."]
+anchor_left = 0.66
+anchor_top = 0.483
+anchor_right = 0.889
+anchor_bottom = 0.588
+margin_left = 0.159973
+margin_top = 0.199982
+margin_right = -0.33606
+margin_bottom = 0.200012
+
+[node name="Button" type="Button" parent="."]
+visible = false
+anchor_left = 0.375
+anchor_top = 0.225
+anchor_right = 0.575
+anchor_bottom = 0.455
+margin_left = -3.05176e-05
+margin_right = 0.199951
+disabled = true
+
+[node name="Label" type="Label" parent="."]
+anchor_left = 0.374
+anchor_top = 0.2
+anchor_right = 0.573
+anchor_bottom = 0.223
+margin_left = 0.0239868
+margin_right = 0.247986
+margin_bottom = 0.199997
+
 [connection signal="text_entered" from="LineEdit" to="." method="_on_LineEdit_text_entered"]
+[connection signal="text_entered" from="Newmove" to="." method="_on_Newmove_text_entered"]
+[connection signal="pressed" from="Button" to="." method="_on_Button_pressed"]

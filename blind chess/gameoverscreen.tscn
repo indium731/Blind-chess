@@ -1,0 +1,41 @@
+[gd_scene format=2]
+
+[node name="gameoverscreen" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="ColorRect" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color( 0, 0, 0, 0.490196 )
+
+[node name="Panel" type="Panel" parent="."]
+anchor_left = 0.348
+anchor_top = 0.323
+anchor_right = 0.646
+anchor_bottom = 0.647
+margin_left = -0.35202
+margin_top = 0.199997
+margin_right = 0.495972
+margin_bottom = -0.200012
+
+[node name="Label" type="Label" parent="Panel"]
+anchor_left = 0.235
+anchor_right = 0.654
+anchor_bottom = 0.119
+margin_left = 0.0899963
+margin_right = -0.124008
+margin_bottom = -0.0860004
+size_flags_stretch_ratio = 0.0
+align = 1
+
+[node name="Button" type="Button" parent="Panel"]
+anchor_left = 0.222
+anchor_top = 1.253
+anchor_right = 0.65
+anchor_bottom = 1.557
+margin_left = 0.0679932
+margin_top = -0.0820007
+margin_right = 0.0999908
+margin_bottom = -0.0580139
+text = "Restart"
